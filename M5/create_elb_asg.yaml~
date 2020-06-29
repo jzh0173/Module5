@@ -1,0 +1,65 @@
+---
+- hosts: localhost
+  tasks:
+    - name: Get my current IP address
+      uri:
+        url: http://checkip.amazonaws.com/
+        return_content: yes
+      register: my_ip
+
+    - name: Create security group
+      ec2_group:
+        name: M5sg
+        description: A security group for my current IP
+        region: us-east-2
+        rules:
+          - proto: tcp
+            from_port: 80
+            to_port: 80
+            cidr_ip: "{{ my_ip.content | replace('\n', '') }}/32"
+          - proto: tcp
+            from_port: 22
+            to_port: 22
+            cidr_ip: "{{ my_ip.content | replace('\n', '') }}/32"
+        rules_egress:
+          - proto: tcp
+            from_port: 80
+            to_port: 80
+            cidr_ip: 0.0.0.0/0
+      register: M5sg_group
+      
+    - name: Create the ELB only listening over port 80
+      ec2_elb_lb:
+        name: M5lb
+        state: present
+        region: us-east-2
+        zones:
+          - us-east-2a
+          - us-east-2b
+        listeners:
+          - protocol: http
+            load_balancer_port: 80
+            instance_port: 80
+      register: elb
+      
+    - name: Create EC2 instances
+      ec2:
+        key_name: M5-els-asg-instance
+        instance_type: t2.nano
+        image: ami-026dea5602e368e96
+        region: us-east-2
+        group_id:
+          - "{{ M5sg_group.group_id }}"
+          - "{{ elb.elb.security_group_ids | first }}"
+#          - "{{ Module5-developer-sg.group_id }}"
+        wait: yes
+        assign_public_ip: yes
+#        vpc_subnet_id: "{{ public_subnet.subnet.id }}"
+        instance_tags:
+          Name: My Module5 elb asg
+          Module: 5
+        exact_count: 2
+        count_tag:
+          Name: My Module5 elb asg
+        user_data: "{{ lookup('file', 'UserData.sh') }}"
+      register: ec2_instances

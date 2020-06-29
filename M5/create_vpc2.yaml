@@ -1,0 +1,14 @@
+---
+ - hosts: localhost
+   gather_facts: no
+   tasks:
+     - name: Create VPC
+       ec2_vpc_net:
+         name: Module5test
+         cidr_block: 10.15.0.0/16
+         aws_access_key: AKIAQXLZF4DKT6PSNNHZ
+         aws_secret_key: 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
+         tags:
+           Module: 5
+         region: "us-east-2"
+         state: present 

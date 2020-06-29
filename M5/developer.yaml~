@@ -1,0 +1,23 @@
+---
+- hosts: al2
+  become: yes
+  tasks:
+    - name: Install emacs-nox
+      package:
+        name: emacs-nox
+        state: present
+    - name: Install apache
+      package:
+        name: httpd
+        state: present
+    - name: Copy index.html
+      copy:
+        src: developer/var/www/html/index.html
+        dest: /var/www/html/index.html
+        owner: apache
+        group: apache
+    - name: Start apache
+      service:
+        name: httpd
+        state: started
+        enabled: true
